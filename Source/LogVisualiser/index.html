@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Log Visualizer</title>
+    <link href="logvisualizer.css" rel="stylesheet" type="text/css"/>
+    <script type="text/javascript" src="columns.js"></script>
+    <script type="text/javascript" src="logFileView.js"></script>
+    <script type="text/javascript" src="logFileList.js"></script>
+    <script type="text/javascript" src="logViewer.js"></script>
+
+
+</head>
+<body onload="onLoad()">
+<div id="logViewer">
+
+    <div id="logFileView">
+        <h2>Log file view</h2>
+        <progress id="logFileRecordsStatus" max="1" value="0"></progress>
+        <div id="logFileRecords">
+            <div id="logFileRecordsScrollArea">
+            </div>
+        </div>
+    </div>
+
+    <div id="logFileList">
+        <h2>List of Files being viewed</h2>
+        <table id="logFileListTable">
+            <tr><th>FileName</th></tr>
+            <tr><td>Drag a file in</td></tr>
+        </table>
+        <input type="file" multiple="multiple" id="uploadFileInput">
+        <button id="uploadFiles">Upload selected files</button>
+    </div>
+
+</div>
+
+</body>
+</html>
