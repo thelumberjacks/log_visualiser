@@ -1,1 +1,84 @@
-const ColumnTypes = {    Timestamp : "Time Stamp",    LogLevel : "Level",    Thread : "Thread",    Class : "Class",    NonPattern : ""};const columnTypeRegex = [];columnTypeRegex[ColumnTypes.Timestamp] = [/\d{4}?\D\d{1,2}?\D\d{1,2} \d{1,2}?:\d{1,2}?:\d{1,2}(\D\d*)?/g];columnTypeRegex[ColumnTypes.LogLevel] = [/( |\W)(trace|debug|info|warn|error|fatal)( |\W)/i];//columnTypeRegex[ColumnTypes.Class]//columnTypeRegex[ColumnTypes.Thread]// TODO: Dont add columnTypeRegex[ColumnTypes.NonPattern] - this way it never macthes!function Column(type, ordinal) {    this.type = type;    this.ordinal = ordinal;}module.exports = function Columns() {    this.columns = [];    this.discoverColumns = function(line) {        // Starting at pos 0 of the lines string - look for all patterns        // Remember the pattern that has the first match and the position        // mmm do we just want to find all column matches.. or avoid overlapping columns..... I think we need a list of columns in expected order. yeah.. so        // recursively discover on the remainder of the line - that is start pos + match width        // Some columnTypeRegex will be arrays        var columnIndex = 0;        var failedToMatch = false;        while(failedToMatch === false) {            var result;            for (var typeKey in columnTypeRegex) {                if (columnTypeRegex.hasOwnProperty(typeKey)) {                    var patterns = columnTypeRegex[typeKey];                    for (var index = 0; index < patterns.length; index++) {                        result = patterns.exec(line);                        if (result.index >= 0) {                            // Don't match any more of the same type                            break;                        }                    }                    if (result.index >= 0) {                        // Don't match any more types                        break;                    }                }            }            if(result.index >= 0) {                // TODO: The characters between the last matcg (or 0) and this must be a non pattern column - add that (of one not already at this index                // TODO: Only add this column if not already discovered... (but carry on looking as if we did - there may be a unqiue column at the end) - .equals??                this.columns.push(new Column(typeKey, columnIndex++));            } else {                // TODO: the characters between the last match and the end must be a non pattern column - add if not already.                // No columns matched - exit the while                failedToMatch = true;            }        }    }}
+
+const ColumnTypes = {
+    Timestamp : "Time Stamp",
+    LogLevel : "Level",
+    Thread : "Thread",
+    Class : "Class",
+    NonPattern : ""
+};
+
+const columnTypeRegex = [];
+
+columnTypeRegex[ColumnTypes.Timestamp] = [/\d{4}?\D\d{1,2}?\D\d{1,2} \d{1,2}?:\d{1,2}?:\d{1,2}(\D\d*)?/g];
+columnTypeRegex[ColumnTypes.LogLevel] = [/(^| |\W)(trace|debug|info|warn|error|fatal)( |\W)/ig];
+columnTypeRegex[ColumnTypes.Class] = [/([a-zA-Z_$][a-zA-Z\d_$]*\.)+([a-zA-Z_$][a-zA-Z\d_$]*)/g];
+columnTypeRegex[ColumnTypes.Thread] = [/(Thread)\W\d+/g];
+
+function Column(type, ordinal) {
+    this.columnTypeKey = type;
+        this.ordinal = ordinal;
+}
+
+// This is used internally to help sort the columns and a specific to the line
+function ColumnPosition(type, startIndex, endIndex){
+    this.columnTypeKey = type;
+    this.startIndex = startIndex;
+    this.endIndex = endIndex;
+}
+
+module.exports = function Columns() {
+    this.columns = [];
+
+    this.addColumn = function(typeKey, ordinal) {
+        // Only add the column if it doesnt already exist at the same index
+        if(!this.columns.find(column => column.columnTypeKey === typeKey && column.ordinal === ordinal)) {
+            this.columns.push(new Column(typeKey, ordinal));
+        }
+    };
+
+    this.discoverColumns = function(line) {
+        let columnPositions = discoverColumnPositions(line);
+
+        // Now we have all the columns and positions - sort into start index order
+        let sortedColumnPositions = columnPositions.sort((a,b) => a.startIndex - b.startIndex);
+
+        // Add each to the list of columns in order
+        let columnIndex = 0;
+        let nextLineIndexPos = 0;
+        for(let index = 0;index < sortedColumnPositions.length; index++) {
+            if(sortedColumnPositions[index].startIndex > nextLineIndexPos) {
+                this.addColumn(ColumnTypes.NonPattern, columnIndex++);
+            }
+            this.addColumn(sortedColumnPositions[index].columnTypeKey, columnIndex++);
+            nextLineIndexPos = sortedColumnPositions[index].endIndex + 1;
+        }
+
+        if(nextLineIndexPos < line.length) {
+            this.addColumn(ColumnTypes.NonPattern, columnIndex);
+        }
+    };
+
+    function discoverColumnPositions(line) {
+        let columnPositions = [];
+        let result;
+        for (let typeKey in columnTypeRegex) {
+            const patterns = columnTypeRegex[typeKey];
+            for (let index = 0; index < patterns.length; index++) {
+                const pattern = patterns[index];
+
+                // Find all the matches in the line for this pattern
+                let keepLooking = true;
+                while(keepLooking) {
+                    result = pattern.exec(line);
+                    if (result != null && result.index >= 0) {
+                        columnPositions.push(new ColumnPosition(typeKey, result.index, pattern.lastIndex));
+                    } else {
+                        keepLooking = false;
+                    }
+                }
+            }
+        }
+
+        return columnPositions;
+    }
+};

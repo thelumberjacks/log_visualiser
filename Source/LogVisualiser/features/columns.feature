@@ -6,7 +6,7 @@ Feature: User can discover columns in log files
   Scenario: A log file with no recognisable columns is searched for columns
     Given I have an empty column list
     When I search a log file with no recognisable columns
-    Then The column list should still be empty
+    Then The column list length should be 1
 
   Scenario: A log file with timestamps searched for columns
     Given I have an empty column list
@@ -21,12 +21,12 @@ Feature: User can discover columns in log files
   Scenario: A new column can be discovered in a second log file
     Given I have a column list with a timestamp column
     When I search a log file with an additional timestamp column
-    Then The column list should contain two different timestmap columns
+    Then The column list should contain 2 different timestamp columns
 
   Scenario: A log file with log level is searched for columns
     Given I have an empty column list
     When I search a log file with log levels
-    Then The column lists should contain a log level column
+    Then The column lists should contain 1 log level columns
 
   Scenario:A log file with a non pattern and patterns columns is searched for columns
     Given I have an empty column list
@@ -47,3 +47,8 @@ Feature: User can discover columns in log files
     Given I have an empty column list
     When I search a log file with class, thread, log level and timestamps
     Then The column list contains columns for all the types
+
+  Scenario:A log file with colums in different positions on different lines is searched for columns
+    Given I have an empty column list
+    When I search a log file with 2 columns transposed on different lines
+    Then The column list contains both columns in both positions
